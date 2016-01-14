@@ -1,0 +1,18 @@
+{
+    "folders": {
+        "test": {
+            "files": [
+                "index.js",
+                0
+            ],
+            "folders": {
+                "inner": {
+                    "files": [
+                        "index.js",
+                        1
+                    ]
+                }
+            }
+        }
+    }
+}
