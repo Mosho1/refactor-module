@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "lodash": "^3.10.1"
+    "lodash": "^3.10.1",
+    "mkdirp": "^0.5.1"
   },
   "devDependencies": {
     "babel-core": "^6.4.0",

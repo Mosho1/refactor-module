@@ -1,1 +1,2 @@
-import test from './inner/index.js';
+require('./inner/index.js');
+Object('./innder/index.js');

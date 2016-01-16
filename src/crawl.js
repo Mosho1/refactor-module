@@ -3,30 +3,47 @@ import Promise from 'bluebird';
 import path from 'path';
 import fs from 'fs';
 import _ from 'lodash';
+import mkdirp from 'mkdirp';
 _.mixin({ 'flatMap': _.compose(_.flatten, _.map) });
 Promise.promisifyAll(babel);
 Promise.promisifyAll(fs);
 
+
+const mkdirpAsync = Promise.promisify(mkdirp);
+
 const plugin = ({types: t}) => {
+
+	const replaceFileName = (fileNamePath, {path: {src, dest}, deps, cwd}) => {
+		const fileName = fileNamePath.node.value;
+		const style = fileName.indexOf('/') > -1 ? 'forward' : 'backward';
+		const absolute = path.resolve(path.dirname(path.join(cwd, src)), fileName);
+		const relative = absolute.replace(cwd, '').replace(/^\\/, '');
+
+		const dep = _.find(deps, x => x.src === relative);
+
+		if (dep) {
+			let newPath = path.relative(path.dirname(dest), dep.dest);
+			if (style === 'forward') {
+				newPath = newPath.replace('\\', '/');
+			}
+			fileNamePath.replaceWith(t.StringLiteral(newPath));
+		}
+	}
+
 	return {
 		visitor: {
-			ImportDeclaration(nodePath, {opts: {path: {src, dest}, deps, cwd}}) {
-				// path.get('source').replaceWith(t.)
-				const source = nodePath.get('source');
-				const importPath = source.node.value;
-				const style = importPath.indexOf('/') > -1 ? 'forward' : 'backward';
-				const absolute = path.resolve(path.dirname(path.join(cwd, src)), importPath);
-				const relative = absolute.replace(cwd, '').replace(/^\\/, '');
-
-				const dep = _.find(deps, x => x.src === relative);
-
-				if (dep) {
-					let newPath = path.relative(path.dirname(dest), dep.dest);
-					if (style === 'forward') {
-						newPath = newPath.replace('\\', '/');
-					}
-					source.replaceWith(t.StringLiteral(newPath));
+			CallExpression(nodePath, state) {
+				const fnName = nodePath.get('callee').node.name;
+				if (fnName !== 'require') {
+					return;
 				}
+				const requirePath = nodePath.get('arguments.0');
+				replaceFileName(requirePath, state.opts);
+			},
+
+			ImportDeclaration(nodePath, state) {
+				const importPath = nodePath.get('source');
+				replaceFileName(importPath, state.opts);
 			}
 		}
 	};
@@ -76,7 +93,7 @@ class TreeGenerator {
 
 		const arrPath = relPath.split(/[\\\/]/);
 
-		const last = arrPath.splice(-1, 1)[0];
+		const last = arrPath.pop();
 
 		const files = _.get(this.tree, arrPath, []).concat([last, id]);
 
@@ -105,15 +122,15 @@ class TreeGenerator {
 		return paths;
 	}
 
-	src = _.memoize(function(module) {
+	setSrc = _.memoize(function(module) {
 		const tree = this.generateTree(module);
 		return this.src = {
 			paths: this.treeToPaths(tree),
 			tree
 		};
-	});
+	}, module => module.id);
 
-	dest(tree) {
+	setDest(tree) {
 		return this.dest = {
 			paths: this.treeToPaths(tree),
 			tree
@@ -154,36 +171,39 @@ const test = {
 
 const transformImports = async (path, opts) => {
 	const transformed = await babel.transformFileAsync(path, {
+		babelrc: false,
 		plugins: [[plugin, opts]]
 	});
 	return transformed;
 };
 
-const getGeneratorForFile = _.memoize((fileName, cwd) => {
-	fileName = path.resolve(path.join(
-		path.normalize(cwd),
-		path.normalize(fileName))
-	);
+const resolvePath = (fileName, cwd = process.cwd()) => path.resolve(path.join(
+	path.normalize(cwd),
+	path.normalize(fileName))
+);
 
+const getCachedModule = (fileName, cwd) => require.cache[resolvePath(fileName, cwd)];
+
+const getGeneratorForFile = _.memoize((fileName, cwd = process.cwd()) => {
+	fileName = resolvePath(fileName, cwd);
 	require(fileName);
 	const gen = new TreeGenerator(cwd);
 	return gen;
 }, (...args) => JSON.stringify(args));
 
-const crawl = async (fileName, cwd = process.cwd()) => {
+const crawl = async function(fileName, cwd = process.cwd()) {
 	const gen = getGeneratorForFile(fileName, cwd);
-	const root = require.cache[fileName];
-	const generated = gen.src(root);
+	const root = getCachedModule(fileName, cwd);
+	const generated = gen.setSrc(root);
 	await fs.writeFileAsync('test.json', JSON.stringify(generated.tree, null, 4));
 	return generated;
 };
 
-const refactor = async (fileName, tree, cwd = process.cwd()) => {
+const refactor = async function(fileName, tree, destPath = process.cwd(), cwd = process.cwd()) {
 	const gen = getGeneratorForFile(fileName, cwd);
-	const root = require.cache[fileName];
-	const {paths} = gen.src(root);
-	const dest = gen.dest(tree);
-
+	const root = getCachedModule(fileName, cwd);
+	const {paths} = gen.setSrc(root);
+	const dest = gen.setDest(tree);
 	for (let [i] of paths.entries()) {
 
 		const deps = gen.getDeps(i);
@@ -195,14 +215,18 @@ const refactor = async (fileName, tree, cwd = process.cwd()) => {
 			cwd,
 			deps
 		});
-		console.log(transformed.code)
+		const pathToWrite = path.join(destPath, dest.paths[i]);
+		await mkdirpAsync(path.dirname(pathToWrite));
+		await fs.writeFileAsync(pathToWrite, transformed.code);
 	}
 
 };
 
 const run = async () => {
 	try {
-		await crawl('./test/index.js', __dirname);
+		const fileName = './test/index.js';
+		const generated = await crawl(fileName, __dirname);
+		await refactor(fileName, test, 'wat', __dirname);
 	} catch(e) {
 		console.error(e.stack);
 	}
