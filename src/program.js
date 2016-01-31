@@ -1,18 +1,23 @@
 import program from 'commander';
+import commands from './commands';
 
 export default program.version('0.0.1');
 
 program
-  .command('generate-tree <entry> <out>')
-  .action((entry, out) => {
-    console.log(entry, out, program);
-
+  .command('generate-tree <entry>')
+  .option('-o, --out <value>', 'set output file')
+  .description('generate the initial module tree')
+  .action((entry, {out}) => {
+    commands.generateTree(entry, {out});
+    process.exit(0);
   });
 
 program
-  .command('refactor <entry>', 'refactor the module')
+  .command('refactor <entry>')
+  .description('refactor the module')
   .option('-o, --out <value>', 'set output directory')
-  .action(entry => {
-      console.log(entry, program.out);
-      process.exit(0);
+  .option('-t, --tree <value>', 'set tree file location')
+  .action((entry, {tree, out}) => {
+    commands.refactor(entry, {tree, out});
+    process.exit(0);
   });
