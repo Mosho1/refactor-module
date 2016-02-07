@@ -21,3 +21,5 @@ program
     commands.refactor(entry, {tree, out});
     process.exit(0);
   });
+
+program.parse(process.argv);

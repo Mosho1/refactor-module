@@ -1,30 +1,36 @@
 {
   "name": "refactor-module",
-  "version": "1.0.0",
+  "version": "0.0.4",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "refactor-module": "build/program.js"
+  },
   "dependencies": {
+    "babel-register": "^6.4.3",
+    "bluebird": "^3.1.1",
+    "bluebird-co": "^2.1.2",
     "commander": "^2.9.0",
     "del": "^2.2.0",
     "lodash": "^3.10.1",
     "mkdirp": "^0.5.1"
   },
   "devDependencies": {
+    "babel-cli": "^6.4.5",
     "babel-core": "^6.4.0",
     "babel-plugin-transform-async-to-module-method": "^6.4.0",
     "babel-plugin-transform-class-properties": "^6.4.0",
     "babel-plugin-transform-runtime": "^6.4.0",
     "babel-preset-es2015": "^6.3.13",
     "babel-preset-stage-0": "^6.3.13",
-    "bluebird": "^3.1.1",
-    "bluebird-co": "^2.1.1",
     "chai": "^3.5.0",
     "mocha": "^2.4.5",
     "reacquire": "^0.1.4",
     "require-uncache": "0.0.2"
   },
   "scripts": {
-    "test": "mocha test/index.js --compilers js:babel-core/register"
+    "test": "mocha test/index.js --compilers js:babel-register",
+    "prepublish": "npm run test && babel src --out-dir build"
   },
   "author": "",
   "license": "ISC"
