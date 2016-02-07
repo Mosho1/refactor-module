@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "bin": {
-    "refactor-module": "build/program.js"
+    "refactor-module": "index.js"
   },
   "dependencies": {
     "babel-register": "^6.4.3",
@@ -17,7 +17,6 @@
   },
   "devDependencies": {
     "babel-cli": "^6.4.5",
-    "babel-core": "^6.4.0",
     "babel-plugin-transform-async-to-module-method": "^6.4.0",
     "babel-plugin-transform-class-properties": "^6.4.0",
     "babel-plugin-transform-runtime": "^6.4.0",
