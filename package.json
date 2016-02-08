@@ -2,7 +2,7 @@
   "name": "refactor-module",
   "version": "0.0.7",
   "description": "",
-  "main": "index.js",
+  "main": "build/commands.js",
   "bin": {
     "refactor-module": "index.js"
   },
@@ -13,7 +13,8 @@
     "commander": "^2.9.0",
     "del": "^2.2.0",
     "lodash": "^3.10.1",
-    "mkdirp": "^0.5.1"
+    "mkdirp": "^0.5.1",
+    "require-relative": "^0.8.7"
   },
   "devDependencies": {
     "babel-cli": "^6.4.5",
